@@ -1,14 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_users_form_wire_login_as" model="ir.ui.view">
-        <field name="name">res.users.form.wire.login.as</field>
+    <record id="view_users_list_switch_user" model="ir.ui.view">
+        <field name="name">res.users.list.wire.switch.user</field>
         <field name="model">res.users</field>
-        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="priority">100</field>
         <field name="arch" type="xml">
-            <header position="inside">
-                <button name="action_wire_login_as" type="object" string="Anmelden als"
-                        groups="base.group_system" invisible="id == uid or share"/>
-            </header>
+            <list create="0" edit="0" delete="0">
+                <field name="name"/>
+                <field name="login"/>
+                <button name="action_wire_login_as" type="object" string="Wechseln" icon="fa-sign-in"/>
+            </list>
         </field>
+    </record>
+
+    <record id="action_switch_user_list" model="ir.actions.act_window">
+        <field name="name">Benutzer wechseln</field>
+        <field name="res_model">res.users</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_users_list_switch_user"/>
+        <field name="domain">[("share", "=", False), ("id", "!=", uid)]</field>
+        <field name="group_ids" eval="[(4, ref('group_switch_user'))]"/>
+    </record>
+
+    <record id="action_server_switch_user" model="ir.actions.server">
+        <field name="name">Benutzer wechseln</field>
+        <field name="model_id" ref="base.model_res_users"/>
+        <field name="binding_model_id" ref="base.model_res_users"/>
+        <field name="binding_view_types">form</field>
+        <field name="group_ids" eval="[(4, ref('group_switch_user'))]"/>
+        <field name="state">code</field>
+        <field name="code">action = records.action_wire_login_as()</field>
     </record>
 </odoo>

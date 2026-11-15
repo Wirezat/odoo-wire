@@ -9,7 +9,7 @@ class ResUsers(models.Model):
     _inherit = "res.users"
 
     def _check_credentials(self, credential, env):
-        """Accept the ``wire_login_as`` credential when a system user switches to an active internal user.
+        """Accept the ``wire_login_as`` credential when a member of "Benutzer wechseln" switches to an active internal user.
 
         The switching user is taken from the current session; ``self.env.user`` is the target here.
 
@@ -27,7 +27,10 @@ class ResUsers(models.Model):
                 credential["type"] == CREDENTIAL_TYPE
                 and request
                 and request.session.uid
-                and self.env["res.users"].sudo().browse(request.session.uid).has_group("base.group_system")
+                and self.env["res.users"]
+                .sudo()
+                .browse(request.session.uid)
+                .has_group("wire_login_as.group_switch_user")
                 and target.active
                 and not target.share
             ):

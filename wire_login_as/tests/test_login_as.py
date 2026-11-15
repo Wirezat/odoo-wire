@@ -6,16 +6,17 @@ from odoo.tests.common import HttpCase, JsonRpcException, new_test_user, tagged
 class TestWireLoginAs(HttpCase):
     @classmethod
     def setUpClass(cls):
-        """Create one internal and one portal target user."""
+        """Create a switching user, one internal and one portal target user."""
         super().setUpClass()
+        cls.switcher = new_test_user(cls.env, "switcher", groups="base.group_user,wire_login_as.group_switch_user")
         cls.internal = new_test_user(cls.env, "internal_user")
         cls.portal = new_test_user(cls.env, "portal_user", groups="base.group_portal")
 
     def _login_as(self, user):
-        """Press the "Anmelden als" button on ``user`` through JSON-RPC.
+        """Run the switch method on ``user`` through JSON-RPC, like the "Wechseln" button.
 
         :param res.users user: target user of the switch
-        :return: action returned by the button
+        :return: action returned by the method
         :rtype: dict
         """
         return self.make_jsonrpc_request(
@@ -31,14 +32,14 @@ class TestWireLoginAs(HttpCase):
         """
         return self.make_jsonrpc_request("/web/session/get_session_info")["uid"]
 
-    def test_admin_switches_to_internal_user(self):
-        """Admin pressing the button ends up in a session of the internal user."""
-        self.authenticate("admin", "admin")
+    def test_switch_group_member_switches_to_internal_user(self):
+        """A member of "Benutzer wechseln" without system rights ends up in a session of the internal user."""
+        self.authenticate("switcher", "switcher")
         self._login_as(self.internal)
         self.assertEqual(self._session_uid(), self.internal.id)
 
-    def test_non_system_user_cannot_switch(self):
-        """A user without base.group_system gets an error from the button."""
+    def test_user_without_switch_group_cannot_switch(self):
+        """A user without the group "Benutzer wechseln" gets an error."""
         other = new_test_user(self.env, "other_user")
         self.authenticate("internal_user", "internal_user")
         with self.assertRaises(JsonRpcException):
@@ -46,7 +47,7 @@ class TestWireLoginAs(HttpCase):
 
     def test_switch_to_portal_user_is_rejected(self):
         """Switching to a portal user is rejected."""
-        self.authenticate("admin", "admin")
+        self.authenticate("switcher", "switcher")
         with self.assertRaises(JsonRpcException):
             self._login_as(self.portal)
 
@@ -63,3 +64,20 @@ class TestWireLoginAs(HttpCase):
             },
         )
         self.assertTrue(res.request.path_url.startswith("/web/login"))
+
+    def test_gear_action_switches_to_record_user(self):
+        """The gear menu action "Benutzer wechseln" on a user form switches into that user."""
+        action = self.env.ref("wire_login_as.action_server_switch_user")
+        self.authenticate("switcher", "switcher")
+        self.make_jsonrpc_request(
+            "/web/action/run",
+            {
+                "action_id": action.id,
+                "context": {
+                    "active_model": "res.users",
+                    "active_id": self.internal.id,
+                    "active_ids": [self.internal.id],
+                },
+            },
+        )
+        self.assertEqual(self._session_uid(), self.internal.id)
