@@ -1,0 +1,31 @@
+target-version = "py312"
+line-length = 120
+
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "node_modules",
+    "dist",
+    "build",
+]
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501", "B008", "B009", "B010"]
+
+[lint.isort]
+known-first-party = ["odoo"]
+combine-as-imports = true
+force-single-line = false
+
+[lint.per-file-ignores]
+"**/__manifest__.py" = ["B018"]
+"**/__init__.py" = ["F401", "I001"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
