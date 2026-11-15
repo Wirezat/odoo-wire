@@ -1,4 +1,5 @@
 from odoo import http
+from odoo.exceptions import AccessError
 from odoo.tests.common import HttpCase, new_test_user, tagged
 
 ECO_HEADERS = {"Remote-Groups": "admin, eco", "Remote-User": "wirezat"}
@@ -7,11 +8,11 @@ ECO_HEADERS = {"Remote-Groups": "admin, eco", "Remote-User": "wirezat"}
 @tagged("post_install", "-at_install")
 class TestWireAutologin(HttpCase):
     def setUp(self):
-        """Start every test anonymously, in table mode, with ``wirezat`` mapped to admin."""
+        """Start every test anonymously, in table mode, with admin carrying the Authelia user ``wirezat``."""
         super().setUp()
         self.admin = self.env.ref("base.user_admin")
         self.env["ir.config_parameter"].set_param("wire_autologin.mode", "table")
-        self.env["wire.autologin.mapping"].create({"remote_user": "wirezat", "user_id": self.admin.id})
+        self.admin.sudo().wire_remote_user = "wirezat"
         self.authenticate(None, None)
 
     def _post_login(self, login, credential_type, headers=None):
@@ -108,3 +109,10 @@ class TestWireAutologin(HttpCase):
         """GET for a mapped but archived user shows the regular form instead of an error."""
         self.admin.active = False
         self._assert_login_form(self.url_open("/web/login", headers=ECO_HEADERS))
+
+    def test_authelia_field_needs_group(self):
+        """A system user without the group "Authelia-Benutzer verwalten" cannot set the Authelia user."""
+        sysadmin = new_test_user(self.env, "sysadmin", groups="base.group_system")
+        target = new_test_user(self.env, "target_user")
+        with self.assertRaises(AccessError):
+            target.with_user(sysadmin).write({"wire_remote_user": "someone"})

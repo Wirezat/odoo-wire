@@ -10,10 +10,6 @@
                     <setting id="wire_autologin_mode_setting" string="Zuordnung"
                              help="Wie ein Authelia-Benutzer der Gruppe eco einem Odoo-Benutzer zugeordnet wird">
                         <field name="wire_autologin_mode" widget="radio"/>
-                        <div invisible="wire_autologin_mode != 'table'">
-                            <button name="%(wire_autologin_mapping_action)d" type="action" string="Zuordnungstabelle"
-                                    icon="oi-arrow-right" class="btn-link"/>
-                        </div>
                     </setting>
                 </block>
             </block>

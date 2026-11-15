@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_users_form_wire_autologin" model="ir.ui.view">
+        <field name="name">res.users.form.wire.autologin</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <div name="auth" position="before">
+                <div name="wire_remote_user" class="d-flex mb-3" groups="wire_autologin.group_authelia_admin">
+                    <div class="col-7 col-sm-6 col-lg-3 d-flex flex-column">
+                        <label for="wire_remote_user" class="o_form_label"/>
+                        <span class="text-muted">Benutzername in Authelia für die automatische Anmeldung.</span>
+                    </div>
+                    <field name="wire_remote_user" class="my-auto"/>
+                </div>
+            </div>
+        </field>
+    </record>
+</odoo>

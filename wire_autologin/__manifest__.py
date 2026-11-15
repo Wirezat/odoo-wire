@@ -6,8 +6,8 @@
     "license": "LGPL-3",
     "depends": ["web", "base_setup"],
     "data": [
-        "security/ir.model.access.csv",
-        "views/wire_autologin_mapping_views.xml",
+        "security/wire_autologin_security.xml",
+        "views/res_users_views.xml",
         "views/res_config_settings_views.xml",
     ],
     "installable": True,

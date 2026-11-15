@@ -1,4 +1,4 @@
-from odoo import models
+from odoo import fields, models
 from odoo.exceptions import AccessDenied
 from odoo.http import request
 
@@ -21,10 +21,16 @@ def has_eco_group(httprequest):
 class ResUsers(models.Model):
     _inherit = "res.users"
 
+    wire_remote_user = fields.Char(string="Authelia-Benutzer", copy=False, groups="wire_autologin.group_authelia_admin")
+
+    _wire_remote_user_unique = models.Constraint(
+        "UNIQUE (wire_remote_user)", "Jeder Authelia-Benutzer darf nur einem Odoo-Benutzer zugeordnet sein."
+    )
+
     def _wire_resolve_user(self, httprequest):
         """Find the Odoo user an Authelia request of group ``eco`` signs in as.
 
-        The mode ``wire_autologin.mode`` selects the mapping table (``Remote-User``) or the e-mail match
+        The mode ``wire_autologin.mode`` selects the Authelia user field (``Remote-User``) or the e-mail match
         (``Remote-Email`` against login or e-mail, exactly one active user).
 
         :param werkzeug.wrappers.Request httprequest: incoming HTTP request
@@ -43,8 +49,7 @@ class ResUsers(models.Model):
         remote_user = httprequest.headers.get("Remote-User", "").strip()
         if not remote_user:
             return users
-        mapping = self.env["wire.autologin.mapping"].sudo().search([("remote_user", "=", remote_user)], limit=1)
-        return mapping.user_id
+        return users.search([("wire_remote_user", "=", remote_user)], limit=1)
 
     def _check_credentials(self, credential, env):
         """Accept the ``wire_remote_user`` credential for the user the Authelia headers map to.
