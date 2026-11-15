@@ -1,12 +1,17 @@
 from odoo import http
 from odoo.tests.common import HttpCase, new_test_user, tagged
 
+ECO_HEADERS = {"Remote-Groups": "admin, eco", "Remote-User": "wirezat"}
+
 
 @tagged("post_install", "-at_install")
 class TestWireAutologin(HttpCase):
     def setUp(self):
-        """Start every test with an anonymous session cookie."""
+        """Start every test anonymously, in table mode, with ``wirezat`` mapped to admin."""
         super().setUp()
+        self.admin = self.env.ref("base.user_admin")
+        self.env["ir.config_parameter"].set_param("wire_autologin.mode", "table")
+        self.env["wire.autologin.mapping"].create({"remote_user": "wirezat", "user_id": self.admin.id})
         self.authenticate(None, None)
 
     def _post_login(self, login, credential_type, headers=None):
@@ -29,22 +34,6 @@ class TestWireAutologin(HttpCase):
             headers=headers,
         )
 
-    def test_remote_user_type_with_eco_header_logs_in_admin(self):
-        """POST with type wire_remote_user and group eco signs in admin."""
-        res = self._post_login("admin", "wire_remote_user", headers={"Remote-Groups": "eco"})
-        self.assertEqual(res.request.path_url, "/odoo")
-
-    def test_remote_user_type_without_header_is_rejected(self):
-        """POST with type wire_remote_user but no header stays on the login form."""
-        res = self._post_login("admin", "wire_remote_user")
-        self.assertTrue(res.request.path_url.startswith("/web/login"))
-
-    def test_remote_user_type_for_other_login_is_rejected(self):
-        """POST with type wire_remote_user for a non-admin login stays on the login form."""
-        new_test_user(self.env, "internal_user")
-        res = self._post_login("internal_user", "wire_remote_user", headers={"Remote-Groups": "eco"})
-        self.assertTrue(res.request.path_url.startswith("/web/login"))
-
     def _session_uid(self):
         """Return the uid of the current test session.
 
@@ -53,26 +42,69 @@ class TestWireAutologin(HttpCase):
         """
         return self.make_jsonrpc_request("/web/session/get_session_info")["uid"]
 
-    def test_eco_header_logs_in_admin(self):
-        """GET with group eco among several groups signs in admin and redirects to /odoo."""
-        res = self.url_open("/web/login", headers={"Remote-Groups": "admin, eco"})
-        self.assertEqual(res.request.path_url, "/odoo")
-        self.assertEqual(self._session_uid(), self.env.ref("base.user_admin").id)
+    def _assert_login_form(self, res):
+        """Assert that the response is the regular login form.
 
-    def test_header_without_eco_shows_form(self):
-        """GET with a header lacking eco shows the regular login form."""
-        res = self.url_open("/web/login", headers={"Remote-Groups": "admin"})
-        self.assertTrue(res.request.path_url.startswith("/web/login"))
-        self.assertIn('name="password"', res.text)
-
-    def test_no_autologin_shows_form(self):
-        """GET with no_autologin shows the regular login form despite group eco."""
-        res = self.url_open("/web/login?no_autologin=1", headers={"Remote-Groups": "eco"})
-        self.assertIn('name="password"', res.text)
-
-    def test_archived_admin_shows_form(self):
-        """GET with group eco and archived admin shows the regular form instead of an error."""
-        self.env.ref("base.user_admin").active = False
-        res = self.url_open("/web/login", headers={"Remote-Groups": "eco"})
+        :param requests.Response res: response to check
+        """
         self.assertEqual(res.status_code, 200)
         self.assertIn('name="password"', res.text)
+
+    def test_remote_user_type_for_mapped_login_logs_in(self):
+        """POST with type wire_remote_user for the mapped login signs that user in."""
+        res = self._post_login("admin", "wire_remote_user", headers=ECO_HEADERS)
+        self.assertEqual(res.request.path_url, "/odoo")
+
+    def test_remote_user_type_without_header_is_rejected(self):
+        """POST with type wire_remote_user but no header stays on the login form."""
+        res = self._post_login("admin", "wire_remote_user")
+        self.assertTrue(res.request.path_url.startswith("/web/login"))
+
+    def test_remote_user_type_for_other_login_is_rejected(self):
+        """POST with type wire_remote_user for a login other than the mapped one stays on the login form."""
+        new_test_user(self.env, "internal_user")
+        res = self._post_login("internal_user", "wire_remote_user", headers=ECO_HEADERS)
+        self.assertTrue(res.request.path_url.startswith("/web/login"))
+
+    def test_table_mode_logs_in_mapped_user(self):
+        """GET in table mode signs in the user mapped to Remote-User and redirects to /odoo."""
+        res = self.url_open("/web/login", headers=ECO_HEADERS)
+        self.assertEqual(res.request.path_url, "/odoo")
+        self.assertEqual(self._session_uid(), self.admin.id)
+
+    def test_table_mode_without_mapping_shows_form(self):
+        """GET in table mode for an unmapped Remote-User shows the regular form."""
+        self._assert_login_form(self.url_open("/web/login", headers={**ECO_HEADERS, "Remote-User": "nobody"}))
+
+    def test_email_mode_logs_in_user_with_matching_login(self):
+        """GET in email mode signs in the user whose login equals Remote-Email, ignoring case."""
+        user = new_test_user(self.env, "sso.user@example.com")
+        self.env["ir.config_parameter"].set_param("wire_autologin.mode", "email")
+        self.url_open("/web/login", headers={**ECO_HEADERS, "Remote-Email": "SSO.User@example.com"})
+        self.assertEqual(self._session_uid(), user.id)
+
+    def test_email_mode_without_match_shows_form(self):
+        """GET in email mode with an unknown Remote-Email shows the regular form."""
+        self.env["ir.config_parameter"].set_param("wire_autologin.mode", "email")
+        headers = {**ECO_HEADERS, "Remote-Email": "unknown@example.com"}
+        self._assert_login_form(self.url_open("/web/login", headers=headers))
+
+    def test_email_mode_with_ambiguous_email_shows_form(self):
+        """GET in email mode shows the regular form when two users share Remote-Email."""
+        new_test_user(self.env, "dup_one", email="dup@example.com")
+        new_test_user(self.env, "dup_two", email="dup@example.com")
+        self.env["ir.config_parameter"].set_param("wire_autologin.mode", "email")
+        self._assert_login_form(self.url_open("/web/login", headers={**ECO_HEADERS, "Remote-Email": "dup@example.com"}))
+
+    def test_header_without_eco_shows_form(self):
+        """GET without group eco shows the regular form even for a mapped Remote-User."""
+        self._assert_login_form(self.url_open("/web/login", headers={**ECO_HEADERS, "Remote-Groups": "admin"}))
+
+    def test_no_autologin_shows_form(self):
+        """GET with no_autologin shows the regular form despite a mapped Remote-User."""
+        self._assert_login_form(self.url_open("/web/login?no_autologin=1", headers=ECO_HEADERS))
+
+    def test_archived_target_shows_form(self):
+        """GET for a mapped but archived user shows the regular form instead of an error."""
+        self.admin.active = False
+        self._assert_login_form(self.url_open("/web/login", headers=ECO_HEADERS))
