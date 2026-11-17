@@ -18,11 +18,13 @@ class TestWireAutologin(HttpCase):
     def _post_login(self, login, credential_type, headers=None):
         """POST the login form with an explicit credential type.
 
-        :param str login: login sent in the form
-        :param str credential_type: value of the ``type`` form field
-        :param dict headers: extra request headers, e.g. ``Remote-Groups``
-        :return: final response after redirects
-        :rtype: requests.Response
+        Args:
+            login (str): Login sent in the form.
+            credential_type (str): Value of the ``type`` form field.
+            headers (dict): Extra request headers, e.g. ``Remote-Groups``.
+
+        Returns:
+            requests.Response: Final response after redirects.
         """
         return self.url_open(
             "/web/login",
@@ -38,15 +40,16 @@ class TestWireAutologin(HttpCase):
     def _session_uid(self):
         """Return the uid of the current test session.
 
-        :return: id of the logged-in user, or None for an anonymous session
-        :rtype: int | None
+        Returns:
+            int | None: Id of the logged-in user, or None for an anonymous session.
         """
         return self.make_jsonrpc_request("/web/session/get_session_info")["uid"]
 
     def _assert_login_form(self, res):
         """Assert that the response is the regular login form.
 
-        :param requests.Response res: response to check
+        Args:
+            res (requests.Response): Response to check.
         """
         self.assertEqual(res.status_code, 200)
         self.assertIn('name="password"', res.text)

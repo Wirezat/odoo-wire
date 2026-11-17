@@ -10,9 +10,11 @@ MODE_PARAM = "wire_autologin.mode"
 def has_eco_group(httprequest):
     """Tell whether the forward-auth header lists the Authelia group ``eco``.
 
-    :param werkzeug.wrappers.Request httprequest: incoming HTTP request
-    :return: True if ``Remote-Groups`` contains ``eco`` as one of its comma-separated entries
-    :rtype: bool
+    Args:
+        httprequest (werkzeug.wrappers.Request): Incoming HTTP request.
+
+    Returns:
+        bool: True if ``Remote-Groups`` contains ``eco`` as one of its comma-separated entries.
     """
     groups = httprequest.headers.get("Remote-Groups", "")
     return ECO_GROUP in (group.strip() for group in groups.split(","))
@@ -33,9 +35,11 @@ class ResUsers(models.Model):
         The mode ``wire_autologin.mode`` selects the Authelia user field (``Remote-User``) or the e-mail match
         (``Remote-Email`` against login or e-mail, exactly one active user).
 
-        :param werkzeug.wrappers.Request httprequest: incoming HTTP request
-        :return: the mapped user, or an empty recordset if there is none
-        :rtype: res.users
+        Args:
+            httprequest (werkzeug.wrappers.Request): Incoming HTTP request.
+
+        Returns:
+            res.users: The mapped user, or an empty recordset if there is none.
         """
         users = self.env["res.users"].sudo()
         if not has_eco_group(httprequest):
@@ -54,11 +58,15 @@ class ResUsers(models.Model):
     def _check_credentials(self, credential, env):
         """Accept the ``wire_remote_user`` credential for the user the Authelia headers map to.
 
-        :param dict credential: login credential with at least ``type``
-        :param dict env: authentication environment passed by ``authenticate``
-        :return: auth_info with ``uid``, ``auth_method`` and ``mfa``
-        :rtype: dict
-        :raise AccessDenied: if neither a parent method nor this rule accepts the credential
+        Args:
+            credential (dict): Login credential with at least ``type``.
+            env (dict): Authentication environment passed by ``authenticate``.
+
+        Returns:
+            dict: auth_info with ``uid``, ``auth_method`` and ``mfa``.
+
+        Raises:
+            AccessDenied: If neither a parent method nor this rule accepts the credential.
         """
         try:
             return super()._check_credentials(credential, env)

@@ -12,10 +12,12 @@ class WireAutologinHome(Home):
     def web_login(self, redirect=None, **kw):
         """Sign in the mapped Odoo user without the login form when Authelia sends group ``eco``.
 
-        :param str redirect: URL to go to after login
-        :param kw: remaining request parameters, ``no_autologin`` forces the regular form
-        :return: redirect after automatic login, otherwise the regular login response
-        :rtype: werkzeug.wrappers.Response
+        Args:
+            redirect (str): URL to go to after login.
+            **kw: Remaining request parameters; ``no_autologin`` forces the regular form.
+
+        Returns:
+            werkzeug.wrappers.Response: Redirect after automatic login, otherwise the regular login response.
         """
         if request.httprequest.method == "GET" and request.session.uid is None and "no_autologin" not in kw:
             ensure_db()
