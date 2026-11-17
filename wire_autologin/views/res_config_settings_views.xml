@@ -11,6 +11,10 @@
                              help="Wie ein Authelia-Benutzer der Gruppe eco einem Odoo-Benutzer zugeordnet wird">
                         <field name="wire_autologin_mode" widget="radio"/>
                     </setting>
+                    <setting id="wire_autologin_logout_url_setting" string="Abmelde-URL"
+                             help="Authelia-Abmeldung, auf die Odoo beim Abmelden weiterleitet">
+                        <field name="wire_autologin_logout_url"/>
+                    </setting>
                 </block>
             </block>
         </field>

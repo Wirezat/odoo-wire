@@ -5,6 +5,8 @@ from odoo.http import request
 ECO_GROUP = "eco"
 CREDENTIAL_TYPE = "wire_remote_user"
 MODE_PARAM = "wire_autologin.mode"
+LOGOUT_URL_PARAM = "wire_autologin.logout_url"
+DEFAULT_LOGOUT_URL = "https://auth.webster.com.de/logout"
 
 
 def has_eco_group(httprequest):

@@ -108,6 +108,15 @@ class TestWireAutologin(HttpCase):
         """GET with no_autologin shows the regular form despite a mapped Remote-User."""
         self._assert_login_form(self.url_open("/web/login?no_autologin=1", headers=ECO_HEADERS))
 
+    def test_logout_behind_authelia_redirects_to_authelia_logout(self):
+        """Logout with Authelia headers redirects to the Authelia logout URL with the Odoo target as ``rd``."""
+        self.env["ir.config_parameter"].set_param("wire_autologin.logout_url", "https://auth.example.com/logout")
+        self.url_open("/web/login", headers=ECO_HEADERS)
+        res = self.url_open("/web/session/logout", headers=ECO_HEADERS, allow_redirects=False)
+        location = res.headers["Location"]
+        self.assertTrue(location.startswith("https://auth.example.com/logout?rd="), location)
+        self.assertTrue(location.endswith("%2Fodoo"), location)
+
     def test_archived_target_shows_form(self):
         """GET for a mapped but archived user shows the regular form instead of an error."""
         self.admin.active = False
